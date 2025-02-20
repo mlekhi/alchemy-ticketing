@@ -15,8 +15,8 @@ export default function ModelViewer() {
 
     // Scene & Camera Setup
     const scene = new THREE.Scene();
-    const camera = new THREE.PerspectiveCamera(75, containerRef.current.clientWidth / containerRef.current.clientHeight, 0.1, 1000);
-    camera.position.set(0, 1, 5);
+    const camera = new THREE.PerspectiveCamera(45, containerRef.current.clientWidth / containerRef.current.clientHeight, 0.1, 1000); // Lowered FOV for less distortion
+    camera.position.set(0, 1, 10); // Moved back slightly for better framing
 
     // Renderer Setup
     const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
@@ -33,7 +33,7 @@ export default function ModelViewer() {
     new RGBELoader().load("/textures/world.hdr", (texture) => {
       const envMap = pmremGenerator.fromEquirectangular(texture).texture;
       scene.environment = envMap;
-      scene.background = envMap; // Optional
+      scene.background = null; // Keep background transparent
       texture.dispose();
       pmremGenerator.dispose();
     });
@@ -42,6 +42,7 @@ export default function ModelViewer() {
     const loader = new GLTFLoader();
     loader.load("/models/alchemy_text.glb", (gltf) => {
       modelRef.current = gltf.scene;
+      modelRef.current.scale.set(2, 2, 2); // Larger text
       scene.add(modelRef.current);
     });
 
@@ -52,6 +53,21 @@ export default function ModelViewer() {
     const directionalLight = new THREE.DirectionalLight(0xffffff, 2);
     directionalLight.position.set(0, 2, 5);
     scene.add(directionalLight);
+
+    // Mouse Move Rotation Logic (Subtle Tilt)
+    const handleMouseMove = (event) => {
+      if (!modelRef.current) return;
+      const { clientX, clientY } = event;
+      const { innerWidth, innerHeight } = window;
+
+      const rotationX = ((clientY / innerHeight) - 0.5) * Math.PI * 0.03; // Even less tilt
+      const rotationY = ((clientX / innerWidth) - 0.5) * Math.PI * 0.07; // Reduced movement
+
+      modelRef.current.rotation.x = rotationX;
+      modelRef.current.rotation.y = rotationY;
+    };
+
+    window.addEventListener("mousemove", handleMouseMove);
 
     // Animation Loop
     const animate = () => {
@@ -70,6 +86,7 @@ export default function ModelViewer() {
 
     return () => {
       window.removeEventListener("resize", handleResize);
+      window.removeEventListener("mousemove", handleMouseMove);
       containerRef.current?.removeChild(renderer.domElement);
     };
   }, []);
