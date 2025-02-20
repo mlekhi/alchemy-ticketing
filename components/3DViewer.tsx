@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 import { GLTFLoader } from "three/examples/jsm/loaders/GLTFLoader";
 import { RGBELoader } from "three/examples/jsm/loaders/RGBELoader";
 import * as THREE from "three";
@@ -15,9 +15,20 @@ export default function ModelViewer() {
 
     // Scene & Camera Setup
     const scene = new THREE.Scene();
-    const camera = new THREE.PerspectiveCamera(45, containerRef.current.clientWidth / containerRef.current.clientHeight, 0.1, 1000); // Lowered FOV for less distortion
-    camera.position.set(0, 1, 10); // Moved back slightly for better framing
+    const aspectRatio = containerRef.current.clientWidth / containerRef.current.clientHeight;
+    const camera = new THREE.PerspectiveCamera(45, aspectRatio, 0.1, 1000);
 
+    // Adjust camera zoom for different screen sizes
+    const setCameraPosition = () => {
+      if (window.innerWidth < 768) {
+        camera.position.set(0, 1, 14); // Zoomed out for mobile
+      } else {
+        camera.position.set(0, 1, 10); // Default for larger screens
+      }
+    };
+
+    setCameraPosition();
+    
     // Renderer Setup
     const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
     renderer.setSize(containerRef.current.clientWidth, containerRef.current.clientHeight);
@@ -42,7 +53,7 @@ export default function ModelViewer() {
     const loader = new GLTFLoader();
     loader.load("/models/alchemy_text.glb", (gltf) => {
       modelRef.current = gltf.scene;
-      modelRef.current.scale.set(2, 2, 2); // Larger text
+      modelRef.current.scale.set(2, 2, 2); // Make text larger
       scene.add(modelRef.current);
     });
 
@@ -60,14 +71,15 @@ export default function ModelViewer() {
       const { clientX, clientY } = event;
       const { innerWidth, innerHeight } = window;
 
-      const rotationX = ((clientY / innerHeight) - 0.5) * Math.PI * 0.03; // Even less tilt
-      const rotationY = ((clientX / innerWidth) - 0.5) * Math.PI * 0.07; // Reduced movement
+      const rotationX = ((clientY / innerHeight) - 0.5) * Math.PI * 0.03; // Less tilt
+      const rotationY = ((clientX / innerWidth) - 0.5) * Math.PI * 0.07; // Subtle movement
 
       modelRef.current.rotation.x = rotationX;
       modelRef.current.rotation.y = rotationY;
     };
 
     window.addEventListener("mousemove", handleMouseMove);
+    window.addEventListener("resize", setCameraPosition);
 
     // Animation Loop
     const animate = () => {
@@ -76,20 +88,13 @@ export default function ModelViewer() {
     };
     animate();
 
-    // Handle Window Resize
-    const handleResize = () => {
-      camera.aspect = containerRef.current.clientWidth / containerRef.current.clientHeight;
-      camera.updateProjectionMatrix();
-      renderer.setSize(containerRef.current.clientWidth, containerRef.current.clientHeight);
-    };
-    window.addEventListener("resize", handleResize);
-
+    // Handle Cleanup
     return () => {
-      window.removeEventListener("resize", handleResize);
       window.removeEventListener("mousemove", handleMouseMove);
+      window.removeEventListener("resize", setCameraPosition);
       containerRef.current?.removeChild(renderer.domElement);
     };
   }, []);
 
-  return <div ref={containerRef} className="w-full h-[60vh] cursor-move" />;
+  return <div ref={containerRef} className="w-full h-[50vh] cursor-move" />;
 }
